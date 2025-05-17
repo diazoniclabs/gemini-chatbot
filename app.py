@@ -33,7 +33,7 @@ if user_input:
     st.chat_message("user").markdown(user_input)
 
     # Get response from Gemini
-    result = llm.invoke(chat_history)
+    result = llm.invoke(st.session_state.chat_history)
     response = result.content
 
     # Append AI response
