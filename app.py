@@ -1,51 +1,42 @@
 import streamlit as st
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+
 import os
 os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
 
-st.set_page_config(page_title="Domain Expert Chatbot")
+# Initialize the LLM
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 
-st.title("🧠 Domain Expert Chatbot")
+# Set up Streamlit page
+st.set_page_config(page_title="Gemini Chatbot", layout="centered")
+st.title("🤖 Gemini Chatbot with Memory")
 
-# Initialize session state
+# Initialize chat history in session state
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-if "domain_set" not in st.session_state:
-    st.session_state.domain_set = False
-if "model" not in st.session_state:
-    st.session_state.model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+    st.session_state.chat_history = [
+        SystemMessage(content="You are a helpful assistant.")
+    ]
 
-# Domain input (only once)
-if not st.session_state.domain_set:
-    domain = st.text_input("Enter the domain (e.g., cricket, science):", key="domain_input")
-    if domain:
-        chat_template = ChatPromptTemplate([
-            ('system', 'You are a helpful {domain} expert who explains things in short and simple terms.')
-        ])
-        prompt_value = chat_template.invoke({'domain': domain})
-        system_message = prompt_value.to_messages()[0]
-        st.session_state.chat_history.append(system_message)
-        st.session_state.domain_set = True
-        st.rerun()  # reload with domain set
-    st.stop()
-
-# Display chat history
+# Display past messages
 for msg in st.session_state.chat_history:
     if isinstance(msg, HumanMessage):
         st.chat_message("user").markdown(msg.content)
     elif isinstance(msg, AIMessage):
         st.chat_message("assistant").markdown(msg.content)
 
-# User input and response
-if prompt := st.chat_input("Ask a question or type 'exit' to end"):
-    st.session_state.chat_history.append(HumanMessage(content=prompt))
-    with st.chat_message("user"):
-        st.markdown(prompt)
+# User input
+user_input = st.chat_input("Say something...")
+if user_input:
+    # Append user message
+    st.session_state.chat_history.append(HumanMessage(content=user_input))
+    st.chat_message("user").markdown(user_input)
 
-    response = st.session_state.model.invoke(st.session_state.chat_history)
-    st.session_state.chat_history.append(AIMessage(content=response.content))
+    # Get response from Gemini
+    result = llm.invoke(user_input)
+    response = result.content
 
-    with st.chat_message("assistant"):
-        st.markdown(response.content)
+    # Append AI response
+    st.session_state.chat_history.append(AIMessage(content=response))
+    st.chat_message("assistant").markdown(response)
+
